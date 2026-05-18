@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(yarn:*)",
+      "Bash(uv:*)",
+      "Bash(pip:*)",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(node:*)",
+      "Bash(tsc:*)",
+      "Bash(eslint:*)",
+      "Bash(prettier:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git show*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout -b*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git rebase*)",
+      "Bash(git reset*)",
+      "Bash(docker*)",
+      "Bash(terraform*)",
+      "Bash(kubectl*)",
+      "Bash(fly*)",
+      "Bash(vercel*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(* > /dev/null 2>&1 &)",
+      "Bash(curl * | sh*)",
+      "Bash(* DROP DATABASE*)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
