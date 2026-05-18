@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Local Claude overrides
+.claude/settings.local.json
+
+# Logs
+*.log
+
+# Active project working copies — track separately
+# Uncomment if you don't want active projects committed to the workspace repo:
+# 01_ACTIVE_PROJECTS/
+
+# Never commit
+**/.env
+**/.env.*
+!**/.env.example
+secrets/
+*.pem
+*.key
