@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1.7
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod=false
+
+FROM node:20-bookworm-slim AS build
+WORKDIR /app
+RUN corepack enable
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm build
+RUN pnpm prune --prod
+
+FROM gcr.io/distroless/nodejs20-debian12:nonroot AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build --chown=nonroot:nonroot /app/node_modules ./node_modules
+COPY --from=build --chown=nonroot:nonroot /app/dist ./dist
+COPY --from=build --chown=nonroot:nonroot /app/package.json ./package.json
+USER nonroot
+EXPOSE 3000
+ENTRYPOINT ["/nodejs/bin/node", "dist/server.js"]

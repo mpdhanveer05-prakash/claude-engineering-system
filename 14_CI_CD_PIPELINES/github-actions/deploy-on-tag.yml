@@ -1,0 +1,74 @@
+name: Deploy on Tag
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  id-token: write    # OIDC to cloud
+  packages: write
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    outputs:
+      notes: ${{ steps.gen.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: gen
+        run: |
+          PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          git log "$PREV"..HEAD --pretty=format:"- %s" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  approve:
+    needs: release-notes
+    runs-on: ubuntu-latest
+    environment: production    # set required reviewers in repo settings
+    steps:
+      - name: Manual approval gate
+        run: echo "Approved for production"
+
+  deploy:
+    needs: approve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Build and push image
+        run: |
+          docker build -t $ECR/$APP:${GITHUB_REF_NAME} .
+          docker push $ECR/$APP:${GITHUB_REF_NAME}
+        env:
+          ECR: ${{ vars.ECR_REGISTRY }}
+          APP: ${{ vars.APP_NAME }}
+      - name: Deploy
+        run: ./infra/scripts/deploy.sh ${GITHUB_REF_NAME}
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./tests/smoke/run.sh ${{ vars.PROD_URL }}
+
+  github-release:
+    needs: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ needs.release-notes.outputs.notes }}
+          generate_release_notes: true
