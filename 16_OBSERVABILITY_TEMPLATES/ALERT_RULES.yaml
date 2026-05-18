@@ -1,0 +1,52 @@
+groups:
+  - name: service-slo
+    interval: 30s
+    rules:
+      # Multi-window multi-burn-rate availability burn
+      - alert: AvailabilityFastBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) > (1 - 0.999) * 14
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "Fast SLO burn on {{ $labels.service }}"
+          runbook: "https://internal/runbooks/availability-burn"
+
+      - alert: AvailabilitySlowBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[30m])) by (service)
+            /
+            sum(rate(http_requests_total[30m])) by (service)
+          ) > (1 - 0.999) * 6
+        for: 15m
+        labels: { severity: ticket }
+
+      - alert: LatencyP95Breach
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_ms_bucket[5m])) by (service, le)
+          ) > 300
+        for: 10m
+        labels: { severity: ticket }
+
+  - name: infra
+    rules:
+      - alert: HighCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels: { severity: ticket }
+
+      - alert: DiskFillProjection
+        expr: predict_linear(node_filesystem_avail_bytes[6h], 4*3600) < 0
+        for: 30m
+        labels: { severity: page }
+
+      - alert: PodCrashLoop
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 10m
+        labels: { severity: page }
